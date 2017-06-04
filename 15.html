@@ -1,0 +1,477 @@
+<html>
+	<body>
+		<script src="http://code.jquery.com/jquery-1.11.0.min.js"></script>
+		<link rel="stylesheet" href="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css">
+		<script src="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js"></script>
+		<script type="text/javascript">
+			function Field(rows, cols) {
+				this.rows = rows;
+				this.cols = cols;
+				this.blank_row = rows - 1;
+				this.blank_col = cols - 1;
+				this.field = [];
+				for (var i = 0; i < rows; ++i) {
+					this.field[i] = [];
+				}
+				this.positions = [];
+				this.table_object = undefined;
+				this.perform_timeout = undefined;
+			}
+			Field.prototype.output = function() {
+				for (var i = 0; i < this.rows; ++i) {
+					row = "";
+					for (var j = 0; j < this.cols; ++j) {
+						row += this.fields[i][j] + " ";
+					}
+				}
+			}
+			Field.prototype.clone = function() {
+				field = new Field(this.rows, this.cols);
+				field.initialize_from_field(this.field);
+				return field;
+			}
+			Field.prototype.initalize_randomly = function () {
+				var permutated_numbers = this.generate_random_permutation();
+				if (!this.is_permutation_even(permutated_numbers)) {
+					[permutated_numbers[0], permutated_numbers[1]] = [permutated_numbers[1], permutated_numbers[0]];
+				}
+				this.apply_list_to_field(permutated_numbers);
+			}
+
+			Field.prototype.initialize_from_array = function(permutated_numbers) {
+				this.apply_list_to_field(permutated_numbers);
+			}
+
+			Field.prototype.initialize_from_field = function(field) {
+				for (var i = 0; i < this.rows; ++i) {
+					for (var j = 0; j < this.cols; ++j) {
+						this.update_field(i, j, field[i][j]);
+					}
+				}
+			}
+
+			Field.prototype.generate_random_permutation = function () {
+				numbers = new Set();
+				for (var i = 0; i + 1 < this.rows * this.cols; ++i) {
+					numbers.add(i + 1);
+				}
+				var permutated_numbers = [];
+				while (numbers.size > 0) {
+					var i = Math.floor(Math.random() * numbers.size)
+					var element = Array.from(numbers)[i];
+					numbers.delete(element);
+					permutated_numbers.push(element);
+				}
+				return permutated_numbers;
+			}
+			Field.prototype.apply_list_to_field = function(list_of_numbers) {
+				var index = 0;
+				for (var i = 0; i < this.rows; ++i) {
+					for (var j = 0; j < this.cols; ++j) {
+						if (i + 1 < this.rows || j + 1 < this.cols) {
+							this.update_field(i, j, list_of_numbers[index++]);
+						}
+					}
+				}
+			}
+			Field.prototype.is_permutation_even = function(permutated_numbers) {
+				var errors = 0;
+				for (var i = 0; i < permutated_numbers.length; ++i) {
+					for (var j = i + 1; j < permutated_numbers.length; ++j) {
+						if (permutated_numbers[i] > permutated_numbers[j]) {
+							++errors;
+						}
+					}
+				}
+				return errors % 2 == 0;
+			}
+			Field.prototype.draw_into_table = function(table_object) {
+				var table_rows = [];
+				for (var i = 0; i < this.rows; ++i) {
+					var cells = [];
+					for (var j = 0; j < this.cols; ++j) {
+						cells.push(`<td class="cell" style="cursor:default;text-align:center;vertical-align:middle;width:50px;height:50px;" valign="middle"
+							row="` + i + `" col="` + j + `" name="cell` + i + `_` + j + `">
+							</td>`);
+					}
+					table_rows.push("<tr>" + cells.join("") + "</tr>");
+				}
+
+				table_object.html(table_rows.join(""));
+				var _this = this;
+				table_object.find('.cell').click(function() {
+					var cell = $(this);
+					_this.make_move(cell.attr('row'), cell.attr('col'));
+				});
+				this.table_object = table_object;
+				this.update_numbers();
+			}
+
+			Field.prototype.set_pause_between_steps = function(pause_between_steps) {
+				this.pause_between_steps = pause_between_steps;
+			}
+
+			Field.prototype.update_numbers = function() {
+				if (this.table_object !== undefined) {
+					for (var i = 0; i < this.rows; ++i) {
+						for (var j = 0; j < this.cols; ++j) {
+							var cell = this.table_object.find('[name=cell' + i + '_' + j + ']');
+							if (cell.html() != this.field[i][j]) {
+								cell.html(this.field[i][j]);
+							}
+						}
+					}
+				}
+			}
+
+			Field.prototype.update_field = function(row, col, value) {
+				this.field[row][col] = value;
+				this.positions[value] = [row, col];
+			}
+			Field.prototype.get_position = function(value) {
+				return this.positions[value];
+			}
+			Field.prototype.move_right = function () {
+				this.update_field(this.blank_row, this.blank_col, this.field[this.blank_row][this.blank_col + 1]);
+				this.update_field(this.blank_row, this.blank_col + 1, '');
+				this.blank_col += 1;
+			}
+			Field.prototype.move_left = function () {
+				this.update_field(this.blank_row, this.blank_col, this.field[this.blank_row][this.blank_col - 1]);
+				this.update_field(this.blank_row, this.blank_col - 1, '');
+				this.blank_col -= 1;
+			}
+			Field.prototype.move_up = function () {
+				this.update_field(this.blank_row, this.blank_col, this.field[this.blank_row - 1][this.blank_col]);
+				this.update_field(this.blank_row - 1, this.blank_col, '');
+				this.blank_row -= 1;
+			}
+			Field.prototype.move_down = function () {
+				this.update_field(this.blank_row, this.blank_col, this.field[this.blank_row + 1][this.blank_col]);
+				this.update_field(this.blank_row + 1, this.blank_col, '');
+				this.blank_row += 1;
+			}
+
+			Field.prototype.make_move = function (row, col) {
+				if (row == this.blank_row && col > this.blank_col) {
+					while (col != this.blank_col) {
+						this.move_right();
+					}
+				} else if (row == this.blank_row && col < this.blank_col) {
+					while (col != this.blank_col) {
+						this.move_left();
+					}
+				} else if (col == this.blank_col && row < this.blank_row) {
+					while (row != this.blank_row) {
+						this.move_up();
+					}
+				} else if (col == this.blank_col && row > this.blank_row) {
+					while (row != this.blank_row) {
+						this.move_down();
+					}
+				}
+				this.update_numbers();
+			}
+
+			Field.prototype.perform = function(moves, index = 0) {
+				var _this = this;
+				if (index < moves.length) {
+					this.perform_timeout = setTimeout(function() {
+							_this.make_move(moves[index][0], moves[index][1]);
+							_this.perform(moves, index + 1);
+						}, this.pause_between_steps * 1000);
+				} else {
+					this.perform_timeout = undefined;
+				}
+			}
+
+			Field.prototype.stop_drawing = function() {
+				if (this.perform_timeout !== undefined) {
+					clearTimeout(this.perform_timeout);
+					this.perform_timeout = undefined;
+				}
+				this.table_object = undefined;
+			}
+
+
+			function Solver(field) {
+				this.field = field.clone();
+			}
+
+			Solver.prototype.make_move = function(row, col, moves) {
+				this.field.make_move(row, col);
+				moves.push([row, col]);
+			}
+
+			Solver.prototype.move_square = function(first_row, second_row, first_col, second_col, moves) {
+				this.make_move(second_row, first_col, moves);
+				this.make_move(first_row, first_col, moves);
+				this.make_move(first_row, second_col, moves);
+				this.make_move(second_row, second_col, moves);
+			}
+
+			Solver.prototype.move_square_reverse = function(first_row, second_row, first_col, second_col, moves) {
+				this.make_move(first_row, second_col, moves);
+				this.make_move(first_row, first_col, moves);
+				this.make_move(second_row, first_col, moves);
+				this.make_move(second_row, second_col, moves);
+			}
+
+			Solver.prototype.move_square_until = function(first_row, second_row, first_col, second_col, moves, condition, is_reverse) {
+				var steps = 0;
+				while(!condition()) {
+					if (is_reverse) {
+						this.move_square_reverse(first_row, second_row, first_col, second_col, moves);
+					} else {
+						this.move_square(first_row, second_row, first_col, second_col, moves);
+					}
+					if (++steps >= 1000) {
+						throw "max steps exceeded";
+					}
+				}
+			}
+
+			Solver.prototype.move_corner_square_until = function(row, col, moves, condition, is_reverse) {
+				this.move_square_until(row, this.field.rows - 1, col, this.field.cols - 1, moves, condition, is_reverse);
+			}
+
+			Solver.prototype.move_to = function(source_row, source_col, target_row, target_col, moves) {
+				var value = this.field.field[source_row][source_col];
+
+				this.move_corner_square_until(
+					Math.min(source_row, target_row, this.field.rows - 2),
+					Math.min(source_col, target_col, this.field.cols - 2),
+					moves,
+					function () {
+						return this.field.field[target_row][target_col] == value;
+					},
+					source_row > target_row || source_row == target_row && source_col < target_col
+				);
+			}
+
+			Solver.prototype.push_first_and_last_to_result = function(source_array, target_array) {
+				if (source_array.length > 0) {
+					target_array.push([source_array[0][0], source_array[0][1]]);
+				}
+				if (source_array.length > 1) {
+					target_array.push([source_array[source_array.length - 1][0],
+						source_array[source_array.length - 1][1]]);
+				}
+			}
+
+			Solver.prototype.eliminate_index = function(moves, index) {
+				var new_moves = [];
+				var prev_value = undefined;
+				var buffer = [];
+				for (var i = 0; i < moves.length; ++i) {
+					var value = moves[i][index];
+					if (prev_value !== undefined && prev_value != value) {
+						this.push_first_and_last_to_result(buffer, new_moves);
+						buffer = [];
+					}
+					buffer.push([moves[i][0], moves[i][1]]);
+					prev_value = value;
+				}
+				this.push_first_and_last_to_result(buffer, new_moves);
+				return new_moves;
+			}
+
+			Solver.prototype.eliminate_simple = function(moves) {
+				return this.eliminate_index(this.eliminate_index(moves, 0), 1);
+			}
+
+			Solver.prototype.subfield_moves = function(new_rows, new_cols, forward_translate, backward_translate, moves) {
+				var new_field = new Field(new_rows, new_cols);
+				var new_field_values = [];
+				for (var i = 0; i < new_rows; ++i) {
+					var new_row = [];
+					for (var j = 0; j < new_cols; ++j) {
+						new_row.push(forward_translate(i, j));
+					}
+					new_field_values.push(new_row);
+				}
+				new_field.initialize_from_field(new_field_values);
+				var new_solver = new Solver(new_field);
+				var new_moves = new_solver.generate_moves();
+				for (var i = 0; i < new_moves.length; ++i) {
+					moves.push(backward_translate(new_moves[i]));
+				}
+			}
+
+			Solver.prototype.move_first_two_rows = function(source_value, target_row, target_col, moves) {
+				var _this = this;
+				var [source_row, source_col] = this.field.get_position(source_value);
+				var is_reverse;
+				if (source_row == target_row && source_row == 0 && source_col <= target_col) {
+					is_reverse = true;
+				} else if (source_row == target_row && source_row == 0 && source_col > target_col) {
+					is_reverse = false;
+				} else if (source_row == 0 && target_row == 1 && source_col + target_col + 1 <= this.field.cols) {
+					is_reverse = false;
+				} else if (source_row == 0 && target_row == 1 && source_col + target_col + 1 > this.field.cols) {
+					is_reverse = true;
+				} else if (source_row == 1 && target_row == 0 && source_col + target_col + 1 > this.field.cols) {
+					is_reverse = false;
+				} else if (source_row == 1 && target_row == 0 && source_col + target_col + 1 <= this.field.cols) {
+					is_reverse = true;
+				} else if (target_row == source_row && source_row == 1 && source_col <= target_col) {
+					is_reverse = false;
+				} else if (target_row == source_row && source_row == 1 && source_col > target_col) {
+					is_reverse = true;
+				}
+				this.move_square_until(0, 1, 0, this.field.cols - 1, moves,
+					function() {
+						return _this.field.field[target_row][target_col] == source_value;
+					}, is_reverse);
+			}
+
+			Solver.prototype.generate_moves = function() {
+				var moves = [];
+				var _this = this;
+				if (this.field.rows >= 3 && this.field.cols >= 3) {
+					for (var i = 0; i + 1 < this.field.cols; ++i) {
+						var [cur_row, cur_col] = this.field.get_position(i + 1);
+						if (cur_col < i) {
+							this.move_to(cur_row, cur_col, 1, i, moves);
+							this.move_to(1, i, 0, i, moves);
+						} else {
+							this.move_to(cur_row, cur_col, 0, cur_col, moves);
+							this.move_to(0, cur_col, 0, i, moves);
+						}
+					}
+					if (this.field.field[0][this.field.cols - 1] != this.field.cols) {
+						var [cur_row, cur_col] = this.field.get_position(this.field.cols);
+						this.move_to(cur_row, cur_col, 1, this.field.cols - 1, moves);
+						this.move_square(0, this.field.rows - 1, this.field.cols - 3, this.field.cols - 1, moves);
+						this.move_square(0, this.field.rows - 1, this.field.cols - 2, this.field.cols - 1, moves);
+						this.move_square_reverse(0, this.field.rows - 1, this.field.cols - 3, this.field.cols - 1, moves);
+					}
+					this.subfield_moves(
+						this.field.rows - 1,
+						this.field.cols,
+						function(row, col) {
+							return _this.field.field[row + 1][col] - this.field.cols;
+						},
+						function(cell) {
+							return [cell[0] + 1, cell[1]];
+						},
+						moves
+					);
+				} else if (this.field.rows == 2 && this.field.cols >= 3) {
+					var lasso = [];
+					for (var i = 0; i < this.field.cols; ++i) {
+						lasso.push(i + 1);
+					}
+					for (var i = 0; i + 1 < this.field.cols; ++i) {
+						lasso.push(this.field.cols * 2 - 1 - i);
+					}
+					for (var i = 1; i < lasso.length; ++i) {
+						var prev_index = lasso[i - 1];
+						var cur_index = lasso[i];
+						var steps = 0;
+						while (true) {
+							var [cur_row, cur_col] = this.field.get_position(cur_index);
+							var prev_row;
+							var prev_col;
+							if (cur_row == 0) {
+								if (cur_col > 0) {
+									prev_col = cur_col - 1;
+									prev_row = cur_row;
+								} else {
+									prev_col = 0;
+									prev_row = 1;
+								}
+							} else {
+								if (cur_col + 2 < this.field.cols) {
+									prev_col = cur_col + 1;
+									prev_row = cur_row;
+								} else {
+									prev_col = this.field.cols - 1;
+									prev_row = 0;
+								}
+							}
+							if (this.field.field[prev_row][prev_col] == prev_index) {
+								break;
+							}
+							this.move_first_two_rows(cur_index, 0, this.field.cols - 2, moves);
+							this.move_square(0, 1, this.field.cols - 2, this.field.cols - 1, moves);
+							this.move_first_two_rows(cur_index, 0, this.field.cols - 2, moves);
+							if (this.field.field[0][this.field.cols - 1] == prev_index) {
+								this.move_square(0, 1, this.field.cols - 2, this.field.cols - 1, moves);
+								this.move_square(0, 1, this.field.cols - 3, this.field.cols - 1, moves);
+								this.move_square(0, 1, this.field.cols - 2, this.field.cols - 1, moves);
+								this.move_square_reverse(0, 1, this.field.cols - 3, this.field.cols - 1, moves);
+							}
+							if (++steps > 1000) {
+								throw "max steps exceeded";
+							}
+						}
+					}
+					this.move_first_two_rows(1, 0, 0, moves);
+				} else if (this.field.rows >= 3 && this.field.cols == 2) {
+					var _this = this;
+					this.subfield_moves(
+						this.field.cols,
+						this.field.rows,
+						function(row, col) {
+							var value = _this.field.field[col][row];
+							var value_row = Math.floor((value - 1) / 2);
+							var value_col = (value - 1) % 2;
+							return value_col * _this.field.rows + value_row + 1;
+						},
+						function(cell) {
+							return [cell[1], cell[0]];
+						},
+						moves
+					);
+				} else if (this.field.rows == 2 && this.field.cols == 2) {
+					var [cur_row, cur_col] = this.field.get_position(1);
+					this.move_to(cur_row, cur_col, 0, 0, moves);
+				}
+				return this.eliminate_simple(moves);
+			}
+			$(function() {
+				var field = undefined;
+				$('#generate').click(function() {
+					if (field !== undefined) {
+						field.stop_drawing();
+					}
+					field = new Field($('#rows').val(), $('#cols').val());
+					field.initalize_randomly();
+					field.draw_into_table($('#main_table'));
+				});
+				$('#solve').click(function() {
+					if (field !== undefined && field.perform_timeout === undefined) {
+						field.set_pause_between_steps($('#pause').val());
+						var solver = new Solver(field);
+						var moves = solver.generate_moves();
+						field.perform(moves);
+					}
+				});
+			});
+
+		</script>
+		<center>
+			<div style="margin-top:15%; width=50%"  >
+				<div class="input-group col-lg-6">
+					<span class="input-group-addon"> Rows </span>
+					<input type="text" id=rows class="form-control" value="4" />
+				</div>
+				<div class="input-group col-lg-6">
+					<span class="input-group-addon"> Cols </span>
+					<input type="text" id=cols class="form-control" value="4" />
+				</div>
+				<div class="input-group col-lg-6">
+					<span class="input-group-addon"> Pause between steps </span>
+					<input type="text" id=pause class="form-control" value="0.3" />
+				</div>
+				<button type=button id=generate class="btn btn-default"> Generate field </button>
+				<button type=button id=solve class="btn btn-default"> Solve </button>
+				<br>
+				<br>
+				<table border="3" id=main_table><tbody>
+				</tbody></table>
+			</div>
+		</center>
+	</body>
+</html>
