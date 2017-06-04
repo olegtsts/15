@@ -21,12 +21,15 @@
 				for (var i = 0; i < this.rows; ++i) {
 					row = "";
 					for (var j = 0; j < this.cols; ++j) {
-						row += this.fields[i][j] + " ";
+						row += this.field[i][j] + " ";
 					}
+					console.log(row);
 				}
 			}
 			Field.prototype.clone = function() {
 				field = new Field(this.rows, this.cols);
+				field.blank_row = this.blank_row;
+				field.blank_col = this.blank_col;
 				field.initialize_from_field(this.field);
 				return field;
 			}
@@ -35,10 +38,6 @@
 				if (!this.is_permutation_even(permutated_numbers)) {
 					[permutated_numbers[0], permutated_numbers[1]] = [permutated_numbers[1], permutated_numbers[0]];
 				}
-				this.apply_list_to_field(permutated_numbers);
-			}
-
-			Field.prototype.initialize_from_array = function(permutated_numbers) {
 				this.apply_list_to_field(permutated_numbers);
 			}
 
@@ -70,6 +69,8 @@
 					for (var j = 0; j < this.cols; ++j) {
 						if (i + 1 < this.rows || j + 1 < this.cols) {
 							this.update_field(i, j, list_of_numbers[index++]);
+						} else {
+							this.update_field(i, j, "");
 						}
 					}
 				}
@@ -286,7 +287,11 @@
 				for (var i = 0; i < new_rows; ++i) {
 					var new_row = [];
 					for (var j = 0; j < new_cols; ++j) {
-						new_row.push(forward_translate(i, j));
+						if (i + 1 < new_rows || j + 1 < new_cols) {
+							new_row.push(forward_translate(i, j));
+						} else {
+							new_row.push("");
+						}
 					}
 					new_field_values.push(new_row);
 				}
@@ -328,6 +333,13 @@
 			Solver.prototype.generate_moves = function() {
 				var moves = [];
 				var _this = this;
+				var [empty_row, empty_col] = this.field.get_position("");
+				if (empty_row != this.field.rows - 1) {
+					this.make_move(this.field.rows - 1, empty_col, moves);
+				}
+				if (empty_col != this.field.cols - 1) {
+					this.make_move(this.field.rows - 1, this.field.cols - 1, moves);
+				}
 				if (this.field.rows >= 3 && this.field.cols >= 3) {
 					for (var i = 0; i + 1 < this.field.cols; ++i) {
 						var [cur_row, cur_col] = this.field.get_position(i + 1);
