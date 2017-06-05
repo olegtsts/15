@@ -422,7 +422,14 @@
 					var [cur_row, cur_col] = this.field.get_position(1);
 					this.move_to(cur_row, cur_col, 0, 0, moves);
 				}
-				return this.eliminate_simple(moves);
+				var prev_length = moves.length;
+				while (true) {
+					moves = this.eliminate_simple(moves);
+					if (moves.length == prev_length) {
+						return moves;
+					}
+					prev_length = moves.length;
+				}
 			}
 			$(function() {
 				var field = undefined;
