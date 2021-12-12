@@ -113,14 +113,24 @@
 			}
 
 			Field.prototype.update_numbers = function() {
+				var is_corerct = true;
+				var current_correct_number = 1;
 				if (this.table_object !== undefined) {
 					for (var i = 0; i < this.rows; ++i) {
 						for (var j = 0; j < this.cols; ++j) {
 							var cell = this.table_object.find('[name=cell' + i + '_' + j + ']');
+							if (this.field[i][j] != current_correct_number++ && (i + 1 < this.rows || j + 1 < this.cols)) {
+								is_corerct = false;
+							}
 							if (cell.html() != this.field[i][j]) {
 								cell.html(this.field[i][j]);
 							}
 						}
+					}
+					if (is_corerct) {
+						this.table_object.css("background-color", "lightgreen");
+					} else {
+						this.table_object.css("background-color", "white");
 					}
 				}
 			}
@@ -133,24 +143,32 @@
 				return this.positions[value];
 			}
 			Field.prototype.move_right = function () {
-				this.update_field(this.blank_row, this.blank_col, this.field[this.blank_row][this.blank_col + 1]);
-				this.update_field(this.blank_row, this.blank_col + 1, '');
-				this.blank_col += 1;
+				if (this.blank_col + 1 < this.cols) {
+					this.update_field(this.blank_row, this.blank_col, this.field[this.blank_row][this.blank_col + 1]);
+					this.update_field(this.blank_row, this.blank_col + 1, '');
+					this.blank_col += 1;
+				}
 			}
 			Field.prototype.move_left = function () {
-				this.update_field(this.blank_row, this.blank_col, this.field[this.blank_row][this.blank_col - 1]);
-				this.update_field(this.blank_row, this.blank_col - 1, '');
-				this.blank_col -= 1;
+				if (this.blank_col > 0) {
+					this.update_field(this.blank_row, this.blank_col, this.field[this.blank_row][this.blank_col - 1]);
+					this.update_field(this.blank_row, this.blank_col - 1, '');
+					this.blank_col -= 1;
+				}
 			}
 			Field.prototype.move_up = function () {
-				this.update_field(this.blank_row, this.blank_col, this.field[this.blank_row - 1][this.blank_col]);
-				this.update_field(this.blank_row - 1, this.blank_col, '');
-				this.blank_row -= 1;
+				if (this.blank_row > 0) {
+					this.update_field(this.blank_row, this.blank_col, this.field[this.blank_row - 1][this.blank_col]);
+					this.update_field(this.blank_row - 1, this.blank_col, '');
+					this.blank_row -= 1;
+				}
 			}
 			Field.prototype.move_down = function () {
-				this.update_field(this.blank_row, this.blank_col, this.field[this.blank_row + 1][this.blank_col]);
-				this.update_field(this.blank_row + 1, this.blank_col, '');
-				this.blank_row += 1;
+				if (this.blank_row + 1 < this.rows) {
+					this.update_field(this.blank_row, this.blank_col, this.field[this.blank_row + 1][this.blank_col]);
+					this.update_field(this.blank_row + 1, this.blank_col, '');
+					this.blank_row += 1;
+				}
 			}
 
 			Field.prototype.make_move = function (row, col) {
@@ -447,6 +465,23 @@
 						var solver = new Solver(field);
 						var moves = solver.generate_moves();
 						field.perform(moves);
+					}
+				});
+				$(document).keydown(function (e) {
+					if (field !== undefined) {
+						if (e.keyCode == '38') {
+							field.move_down();
+						}
+						else if (e.keyCode == '40') {
+							field.move_up();
+						}
+						else if (e.keyCode == '37') {
+							field.move_right();
+						}
+						else if (e.keyCode == '39') {
+							field.move_left();
+						}
+						field.update_numbers();
 					}
 				});
 			});
